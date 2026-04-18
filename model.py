@@ -2,22 +2,10 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from utils import ReverseLayerF
 import torch.nn.functional as F
 import math
-import torchvision
-from torchvision import  models      
-import argparse
-import random
-import itertools
-import datetime
-import time
-import numpy as np
-import pandas as pd
+from torchvision import models
 import torch.nn.init as init
-from torch import Tensor
-from torch.autograd import Variable
-from einops.layers.torch import Rearrange
 
 class EEGNet(nn.Module):
     def __init__(self,T,C):
@@ -204,21 +192,6 @@ class BMCL(nn.Module):
         self.common_2.add_module('common_activation_2', self.activation)
 
 
-
-
-        self.private_e_2 = nn.Sequential()
-        self.private_e_2.add_module('private_e_2', nn.Linear(in_features=config.hidden_size, out_features=32))
-        self.private_e_2.add_module('private_e_activation_2', self.activation)
-        self.private_i_2 = nn.Sequential()
-        self.private_i_2.add_module('private_i_2', nn.Linear(in_features=config.hidden_size, out_features=32))
-        self.private_i_2.add_module('private_i_activation_2', self.activation)
-        
-        # common encoder
-        self.common_2 = nn.Sequential()
-        self.common_2.add_module('common_2', nn.Linear(in_features=config.hidden_size, out_features=32))
-        self.common_2.add_module('common_activation_2', self.activation)
-
-
         self.private_e_3 = nn.Sequential()
         self.private_e_3.add_module('private_e_3', nn.Linear(in_features=64, out_features=16))
         self.private_e_3.add_module('private_e_activation_3', self.activation)
@@ -291,23 +264,6 @@ class BMCL(nn.Module):
         # common-private encoders
         self.common_private(representation_eeg, representation_image)
 
-        # if not self.config.use_sim:
-        #     # discriminator
-        #     reversed_common_code_e = ReverseLayerF.apply(self.representation_common_e, self.config.reverse_grad_weight)
-        #     reversed_common_code_i = ReverseLayerF.apply(self.representation_common_i, self.config.reverse_grad_weight)
-        #     self.domain_label_e = self.discriminator(reversed_common_code_e)
-        #     self.domain_label_i = self.discriminator(reversed_common_code_i)
-        # else:
-        #     self.domain_label_e = None
-        #     self.domain_label_i = None
-
-        # self.common_or_private_p_e = self.sp_discriminator(self.representation_private_e)
-        # self.common_or_private_p_i = self.sp_discriminator(self.representation_private_i)
-        # self.common_or_private_s = self.sp_discriminator( (self.representation_common_e + self.representation_common_i)/2.0 )
-        
-        # For reconstruction
-        # self.reconstruct()
-        
         h_e = torch.stack((self.representation_private_e, self.representation_common_e), dim=0)
         h_e = torch.cat((h_e[0], h_e[1]), dim=1)
         o_e=self.fusion_e_xyz(h_e)
@@ -357,7 +313,6 @@ class BMCL(nn.Module):
     def forward(self, eeg, image):
         self.eeg = eeg
         self.image = image
-        batch_size = eeg.size(0)
         o_e, o_i = self.alignment(eeg, image)
         return o_e, o_i
 
@@ -366,7 +321,6 @@ class Image(nn.Module):
         super(Image, self).__init__()
         self.droprate = droprate
         self.lstm = lstm
-        feature_extractor = models.resnet34(pretrained=True)
         self.feature_extractor = feature_extractor
         self.feature_extractor.avgpool = nn.AdaptiveAvgPool2d(1)                #修改平均池化层其输出大小为(1, 1)
         fe_out_planes = self.feature_extractor.fc.in_features
@@ -426,4 +380,3 @@ class AttentionBlock(nn.Module):
         z = W_y + x
         return z
    
-

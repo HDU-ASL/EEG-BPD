@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os.path as osp
+from matplotlib.ticker import MaxNLocator
 
 # 文件路径
 save_name = "sphere"  # 或使用 self.name
@@ -19,11 +20,7 @@ save_dir = "/home/hyx/test/BCML/memory"
 # save_dir = "/home/hyx/test/BCML/memory_EEG"
 index_file = "/home/hyx/test/BCML/data/Work/SPLIT/test_indices.csv"
 image_filename = osp.join(save_dir, f"{save_name}-3d.png")
-gt_pose = np.loadtxt(tar)
-pred_pose = np.loadtxt(pre)
 sorted_indices = np.loadtxt(index_file, dtype=int)
-
-# 排序
 
 gt_pose = np.loadtxt(tar)         # shape: [N, 7] - GT
 pred_pose = np.loadtxt(pre)       # shape: [N, 7] - Predicted
@@ -71,7 +68,6 @@ ax.zaxis.line.set_color((1.0, 1.0, 1.0, 0.0))
 ax.set_xlabel('X [m]', fontsize=30, labelpad=25)
 ax.set_ylabel('Y [m]', fontsize=30, labelpad=25)
 ax.set_zlabel('Z [m]', fontsize=30, labelpad=22)
-from matplotlib.ticker import MaxNLocator
 
 ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
 ax.yaxis.set_major_locator(MaxNLocator(nbins=3))

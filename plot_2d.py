@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os.path as osp
-import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 save_name = "night2" 
@@ -75,5 +74,4 @@ ax1.grid()
 fig1.savefig(image_filename)
 plt.close()
 
-# Print output
-print(f"3D plot saved to: {image_filename}")
+print(f"2D plot saved to: {image_filename}")
