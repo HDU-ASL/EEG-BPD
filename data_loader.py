@@ -849,38 +849,34 @@ def data_loader6(opt):      # 脑电数据时长500 desk1 数据
 
 
 def data_loader7(opt):      # 脑电数据时长100 desk1 数据 
-                         
     sample_size = 500
+    n_step = 60
+    n_input = 100
+    height = 256
+    width = 256
+    image_channels = 3
+    eeg_path = "/mnt/HYX/实验五/Subject05/NP/sub05_seq_100.mat"
+    grouthtruth_txt = '/mnt/HYX/rgbd_dataset_freiburg1_desk/groundtruth.txt'
+    rgb_txt = "/mnt/HYX/rgbd_dataset_freiburg1_desk/rgb.txt"
+    image_dir = '/mnt/HYX/rgbd_dataset_freiburg1_desk/rgb'
+
     split_dir = getattr(opt, 'facial_splits_path', '/mnt/HYX/TEST')
     os.makedirs(split_dir, exist_ok=True)
     train_indices_path = os.path.join(split_dir, 'train_indices.csv')
     test_indices_path = os.path.join(split_dir, 'test_indices.csv')
 
     if not (os.path.exists(train_indices_path) and os.path.exists(test_indices_path)):
-        indices = np.arange(sample_size)
-        np.random.shuffle(indices)
-        train_indices = indices[:-int(sample_size // 3)]
-        test_indices = indices[-int(sample_size // 3):]
+        indices = np.random.permutation(sample_size)
+        train_indices = indices[:-sample_size // 3]
+        test_indices = indices[-sample_size // 3:]
         np.savetxt(train_indices_path, train_indices, fmt='%d')
         np.savetxt(test_indices_path, test_indices, fmt='%d')
 
-    train_indices = np.loadtxt(train_indices_path).astype('int')
-    test_indices = np.loadtxt(test_indices_path).astype('int')
-    n_step = 60
-    n_input = 100
-    channels = 1
+    train_indices = np.atleast_1d(np.loadtxt(train_indices_path)).astype(int)
+    test_indices = np.atleast_1d(np.loadtxt(test_indices_path)).astype(int)
 
-    print(train_indices)
-
-    EEG_path="/mnt/HYX/实验五/Subject05/NP/sub05_seq_100.mat"
-    #"/home/hyx/subject2/实验1/order1.mat"
-    
-    grouthtruth_txt='/mnt/HYX/rgbd_dataset_freiburg1_desk/groundtruth.txt'
-    rgb_txt="/mnt/HYX/rgbd_dataset_freiburg1_desk/rgb.txt"
-
-    print(sio.loadmat(EEG_path))
     eeg_data = EEG_reshape(EEG_path)
-    eeg_poses = read_groundtruth(grouthtruth_txt,rgb_txt,EEG=True)
+    eeg_poses = np.array(read_groundtruth(grouthtruth_txt, rgb_txt, EEG=True)[:sample_size])
         
     from scipy.spatial.transform import Rotation as R
 
@@ -888,8 +884,6 @@ def data_loader7(opt):      # 脑电数据时长100 desk1 数据
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, 'desk1.txt')
 
-    # 计算
-    eeg_poses = np.array(eeg_poses[:500])
     positions = eeg_poses[:, :3]
     trans_deltas = np.linalg.norm(positions[1:] - positions[:-1], axis=1)
     total_trans = np.sum(trans_deltas)
@@ -908,69 +902,32 @@ def data_loader7(opt):      # 脑电数据时长100 desk1 数据
         f.write(f"平均旋转变化: {np.mean(rot_deltas):.2f}°\n")
         f.write(f"总角度变化: {total_rot:.2f}°\n")
 
-    print(f"结果已保存到：{save_path}")
-
-
-    eeg_y_test=[]
-    eeg_y_train=[]
     eeg_x_test = eeg_data[test_indices]
-    for i in test_indices:
-        i=int(i)
-        eeg_y_test.append(eeg_poses[i])
-
     eeg_x_train = eeg_data[train_indices]
+    eeg_y_train = eeg_poses[train_indices]
+    eeg_y_test = eeg_poses[test_indices]
 
-    for i in train_indices:
-        i=int(i)
-        eeg_y_train.append(eeg_poses[i])
-
-    height = 256
-    width = 256
-    channels = 3
-    image_data=[]
-    image_y_test=[]
-    image_y_train=[]
-
-    frame_idx=range(500)
-    #frame_idx=numbers  
-
-    c_imgs = [osp.join('/mnt/HYX/rgbd_dataset_freiburg1_desk/rgb', 'test1({:d}).png'.format(int(i+1)))for i in frame_idx]
-    #/root/autodl-tmp/test/BCML/data/Work/desk2
-    for img_path in c_imgs:  
-        img = cv2.imread(img_path)  # 默认读取彩色图像
+    image_data = []
+    for frame_idx in range(sample_size):
+        img_path = osp.join(image_dir, f'test1({frame_idx + 1}).png')
+        img = cv2.imread(img_path)
         if img is None:
-            print("?")  
-        if img is not None:  
-            img= cv2.resize(img, (width, height))  
-            img_new = np.expand_dims(img, axis=-1)  # 增加一个通道维度 
-            img_flat = img_new.flatten() 
-            image_data.append(img_flat)  
-        
+            raise FileNotFoundError(f"Image not found: {img_path}")
+        img = cv2.resize(img, (width, height))
+        image_data.append(np.expand_dims(img, axis=-1).flatten())
+
     image_data = np.array(image_data)
-    image_poses = read_groundtruth(grouthtruth_txt,rgb_txt,EEG=False)
+    image_poses = np.array(read_groundtruth(grouthtruth_txt, rgb_txt, EEG=False)[:sample_size])
 
-    image_x_test=image_data[test_indices]
-    #image_x_test = image_data[-60:,:]
-
-    for i in test_indices:
-        i=int(i)
-        image_y_test.append(image_poses[i])
-
-
-
-    image_x_train=image_data[train_indices]
-    #image_x_train = image_data[:120,:]
-
-    for i in train_indices:
-        i=int(i)
-        image_y_train.append(image_poses[i])
-
-
+    image_x_test = image_data[test_indices]
+    image_x_train = image_data[train_indices]
+    image_y_test = image_poses[test_indices]
+    image_y_train = image_poses[train_indices]
 
     eeg_x_train = eeg_x_train.reshape(-1, n_step, n_input).astype('float32')
     eeg_x_test = eeg_x_test.reshape(-1, n_step, n_input).astype('float32')
-    image_x_train = image_x_train.reshape(-1, height, width, channels).astype('float32')
-    image_x_test = image_x_test.reshape(-1, height, width, channels).astype('float32')
+    image_x_train = image_x_train.reshape(-1, height, width, image_channels).astype('float32')
+    image_x_test = image_x_test.reshape(-1, height, width, image_channels).astype('float32')
     image_x_train = image_x_train.transpose(0, 3, 1, 2)
     image_x_test = image_x_test.transpose(0, 3, 1, 2)      
     image_x_train = image_x_train / 255.0
